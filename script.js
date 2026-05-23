@@ -138,7 +138,7 @@ function renderGears() {
         img.id = `gear-${gear.id}`;
         img.src = gear.src;
         img.classList.add('gear');
-        const size = gear.id === 2 ? 265 : gear.teeth * 5;
+        const size = gear.id === 2 ? 272 : gear.teeth * 5;
         img.style.width    = `${size}px`;
         img.style.height   = `${size}px`;
         img.style.left     = `${gear.x}px`;
