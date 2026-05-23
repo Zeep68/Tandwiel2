@@ -4,7 +4,7 @@ const gears = [
     { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2,  visible: false },
     { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3,  visible: false },
     { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4,  alignWith: 6 },
-    { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5,  alignWith: 5 },
+    { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5 },
     { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6,  alignWith: 8 },
     { id: 8,  src: 'images/gear189org.png',     teeth: 18, x: 600, y: 600, direction: -1, syncWith: 7 },
     { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8,  alignWith: 10 },
@@ -29,9 +29,6 @@ const startAngles = {
     14:  39.5,
     15: -44.8,
 };
-
-const defaultPositions = {};
-gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
 let isRotating = false;
 const rotations = {};
@@ -87,7 +84,7 @@ function drawLines() {
         const cA = gearCenter(gear);
         const cB = gearCenter(partner);
 
-        const currentAngle = rotations[gear.id]?.angle || 0;
+        const currentAngle = (rotations[gear.id]?.angle || 0);
         const startAngle   = startAngles[gear.id] || 0;
         const totalAngle   = currentAngle + startAngle;
 
@@ -153,6 +150,7 @@ function renderGears() {
         label.style.top      = `${gear.y - 20}px`;
         label.style.zIndex   = '50';
 
+        // Onzichtbaar maken indien nodig
         if (gear.visible === false) {
             img.style.display   = 'none';
             label.style.display = 'none';
@@ -185,25 +183,6 @@ function loadPositions() {
     if (saved) gears.forEach(gear => {
         if (saved[gear.id]) { gear.x = saved[gear.id].x; gear.y = saved[gear.id].y; }
     });
-}
-
-function resetPositions() {
-    stopRotation();
-    localStorage.removeItem('gearPositions');
-    gears.forEach(gear => {
-        gear.x = defaultPositions[gear.id].x;
-        gear.y = defaultPositions[gear.id].y;
-        rotations[gear.id] = { angle: 0 };
-        const img = document.getElementById(`gear-${gear.id}`);
-        if (img) {
-            img.style.left      = `${gear.x}px`;
-            img.style.top       = `${gear.y}px`;
-            img.style.transform = 'rotate(0deg)';
-        }
-        const lbl = document.querySelector(`.gear-label[data-id="${gear.id}"]`);
-        if (lbl) { lbl.style.left = `${gear.x}px`; lbl.style.top = `${gear.y - 20}px`; }
-    });
-    drawLines();
 }
 
 function getParentGear(gear) {
@@ -265,9 +244,9 @@ function makeDraggable() {
                 const y = event.clientY - offsetY;
                 gearEl.style.left = `${x}px`;
                 gearEl.style.top  = `${y}px`;
-                const id  = parseInt(gearEl.id.split('-')[1], 10);
-                const lbl = document.querySelector(`.gear-label[data-id="${id}"]`);
-                if (lbl) { lbl.style.left = `${x}px`; lbl.style.top = `${y - 20}px`; }
+                const id    = parseInt(gearEl.id.split('-')[1], 10);
+                const label = document.querySelector(`.gear-label[data-id="${id}"]`);
+                if (label) { label.style.left = `${x}px`; label.style.top = `${y - 20}px`; }
                 drawLines();
             };
             const stop = () => {
@@ -296,5 +275,4 @@ document.addEventListener('DOMContentLoaded', () => {
     makeDraggable();
     document.getElementById('startButton').addEventListener('click', startRotation);
     document.getElementById('stopButton').addEventListener('click', stopRotation);
-    document.getElementById('resetButton').addEventListener('click', resetPositions);
 });
