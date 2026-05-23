@@ -30,7 +30,6 @@ const startAngles = {
     15: -44.8,
 };
 
-// Sla originele posities op voor reset
 const defaultPositions = {};
 gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
@@ -154,7 +153,6 @@ function renderGears() {
         label.style.top      = `${gear.y - 20}px`;
         label.style.zIndex   = '50';
 
-        // Onzichtbaar — label EERST aanmaken, DAN verbergen
         if (gear.visible === false) {
             img.style.display   = 'none';
             label.style.display = 'none';
@@ -267,8 +265,8 @@ function makeDraggable() {
                 const y = event.clientY - offsetY;
                 gearEl.style.left = `${x}px`;
                 gearEl.style.top  = `${y}px`;
-                const id    = parseInt(gearEl.id.split('-')[1], 10);
-                const lbl   = document.querySelector(`.gear-label[data-id="${id}"]`);
+                const id  = parseInt(gearEl.id.split('-')[1], 10);
+                const lbl = document.querySelector(`.gear-label[data-id="${id}"]`);
                 if (lbl) { lbl.style.left = `${x}px`; lbl.style.top = `${y - 20}px`; }
                 drawLines();
             };
