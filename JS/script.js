@@ -1,17 +1,17 @@
 const gears = [
     { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1 },
     { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1 },
-    { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2 },
-    { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3 },
-    { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4 },
+    { id: 3,  src: 'images/gear9.png', visible: false,          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2 },
+    { id: 4,  src: 'images/gear12.png', visible: false,         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3 },
+    { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4, alignWith: 6 },
     { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5 },
-    { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6 },
+    { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6, alignWith: 8 },
     { id: 8,  src: 'images/gear189org.png',     teeth: 18, x: 600, y: 600, direction: -1, syncWith: 7 },
-    { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8 },
+    { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8, alignWith: 10 },
     { id: 10, src: 'images/gear369org.png',     teeth: 36, x: 300, y: 600, direction: -1, syncWith: 9 },
-    { id: 11, src: 'images/gear9a.png',         teeth:  9, x: 850, y: 300, direction:  1, syncWith: 10 },
-    { id: 12, src: 'images/gear13.png',         teeth: 13, x: 150, y: 300, direction:  1, syncWith: 11 },
-    { id: 13, src: 'images/gear2113.png',       teeth: 21, x: 150, y: 300, direction:  1, syncWith: 12 },
+    { id: 11, src: 'images/gear9a.png', visible: false,         teeth:  9, x: 850, y: 300, direction:  1, syncWith: 10 },
+    { id: 12, src: 'images/gear13.png', visible: false,         teeth: 13, x: 150, y: 300, direction:  1, syncWith: 11 },
+    { id: 13, src: 'images/gear2113.png',       teeth: 21, x: 150, y: 300, direction:  1, syncWith: 12, alignWith: 14 },
     { id: 14, src: 'images/gear34org.png',      teeth: 34, x: 600, y: 150, direction: -1, syncWith: 13 },
     { id: 15, src: 'images/gear25linksorg.png', teeth: 25, x: 600, y: 450, direction:  1, syncWith: 14 },
 ];
@@ -76,7 +76,8 @@ function drawLines() {
 
     gears.forEach(gear => {
         if (!gear.syncWith) return;
-        const partner = gears.find(g => g.id === gear.syncWith);
+        const alignId = gear.alignWith || gear.syncWith;
+        const partner = gears.find(g => g.id === alignId);
         if (!partner) return;
 
         const cA = gearCenter(gear);
@@ -138,6 +139,7 @@ function renderGears() {
         img.style.left     = `${gear.x}px`;
         img.style.top      = `${gear.y}px`;
         img.style.position = 'absolute';
+        if (gear.visible === false) { img.style.display = 'none'; label.style.display = 'none'; }
 
         const label = document.createElement('span');
         label.classList.add('gear-label');
