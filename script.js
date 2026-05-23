@@ -64,7 +64,8 @@ function resizeCanvas() {
 
 function gearCenter(gear) {
     const img = document.getElementById(`gear-${gear.id}`);
-    const radius = (gear.teeth * 5) / 2;
+    const actualSize = gear.id === 2 ? 272 : gear.teeth * 5;
+    const radius = actualSize / 2;
     const x = parseInt(img ? img.style.left : gear.x) + radius;
     const y = parseInt(img ? img.style.top  : gear.y) + radius;
     return { x, y, radius };
@@ -138,7 +139,7 @@ function renderGears() {
         img.id = `gear-${gear.id}`;
         img.src = gear.src;
         img.classList.add('gear');
-        const size = gear.id === 2 ? 272 : gear.teeth * 5;
+        const size = gear.id === 2 ? 250 : gear.teeth * 5;
         img.style.width    = `${size}px`;
         img.style.height   = `${size}px`;
         img.style.left     = `${gear.x}px`;
