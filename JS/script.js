@@ -1,22 +1,21 @@
 const gears = [
     { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1 },
     { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1 },
-    { id: 3,  src: 'images/gear9.png', visible: false,          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2 },
-    { id: 4,  src: 'images/gear12.png', visible: false,         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3 },
-    { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4, alignWith: 6 },
-    { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5 },
-    { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6, alignWith: 8 },
+    { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2,  visible: false },
+    { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3,  visible: false },
+    { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4,  alignWith: 6 },
+    { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5,  alignWith: 5 },
+    { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6,  alignWith: 8 },
     { id: 8,  src: 'images/gear189org.png',     teeth: 18, x: 600, y: 600, direction: -1, syncWith: 7 },
-    { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8, alignWith: 10 },
+    { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8,  alignWith: 10 },
     { id: 10, src: 'images/gear369org.png',     teeth: 36, x: 300, y: 600, direction: -1, syncWith: 9 },
-    { id: 11, src: 'images/gear9a.png', visible: false,         teeth:  9, x: 850, y: 300, direction:  1, syncWith: 10 },
-    { id: 12, src: 'images/gear13.png', visible: false,         teeth: 13, x: 150, y: 300, direction:  1, syncWith: 11 },
+    { id: 11, src: 'images/gear9a.png',         teeth:  9, x: 850, y: 300, direction:  1, syncWith: 10, visible: false },
+    { id: 12, src: 'images/gear13.png',         teeth: 13, x: 150, y: 300, direction:  1, syncWith: 11, visible: false },
     { id: 13, src: 'images/gear2113.png',       teeth: 21, x: 150, y: 300, direction:  1, syncWith: 12, alignWith: 14 },
     { id: 14, src: 'images/gear34org.png',      teeth: 34, x: 600, y: 150, direction: -1, syncWith: 13 },
     { id: 15, src: 'images/gear25linksorg.png', teeth: 25, x: 600, y: 450, direction:  1, syncWith: 14 },
 ];
 
-// Starthoeken gemeten uit afbeeldingen (graden, 0°=rechts, met klok mee)
 const startAngles = {
     1:  -18.7,
     2: -124.8,
@@ -30,6 +29,10 @@ const startAngles = {
     14:  39.5,
     15: -44.8,
 };
+
+// Sla originele posities op voor reset
+const defaultPositions = {};
+gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
 let isRotating = false;
 const rotations = {};
@@ -76,6 +79,8 @@ function drawLines() {
 
     gears.forEach(gear => {
         if (!gear.syncWith) return;
+        if (gear.visible === false) return;
+
         const alignId = gear.alignWith || gear.syncWith;
         const partner = gears.find(g => g.id === alignId);
         if (!partner) return;
@@ -83,7 +88,7 @@ function drawLines() {
         const cA = gearCenter(gear);
         const cB = gearCenter(partner);
 
-        const currentAngle = (rotations[gear.id]?.angle || 0);
+        const currentAngle = rotations[gear.id]?.angle || 0;
         const startAngle   = startAngles[gear.id] || 0;
         const totalAngle   = currentAngle + startAngle;
 
@@ -139,7 +144,6 @@ function renderGears() {
         img.style.left     = `${gear.x}px`;
         img.style.top      = `${gear.y}px`;
         img.style.position = 'absolute';
-        if (gear.visible === false) { img.style.display = 'none'; label.style.display = 'none'; }
 
         const label = document.createElement('span');
         label.classList.add('gear-label');
@@ -149,6 +153,12 @@ function renderGears() {
         label.style.left     = `${gear.x}px`;
         label.style.top      = `${gear.y - 20}px`;
         label.style.zIndex   = '50';
+
+        // Onzichtbaar — label EERST aanmaken, DAN verbergen
+        if (gear.visible === false) {
+            img.style.display   = 'none';
+            label.style.display = 'none';
+        }
 
         container.appendChild(img);
         container.appendChild(label);
@@ -177,6 +187,25 @@ function loadPositions() {
     if (saved) gears.forEach(gear => {
         if (saved[gear.id]) { gear.x = saved[gear.id].x; gear.y = saved[gear.id].y; }
     });
+}
+
+function resetPositions() {
+    stopRotation();
+    localStorage.removeItem('gearPositions');
+    gears.forEach(gear => {
+        gear.x = defaultPositions[gear.id].x;
+        gear.y = defaultPositions[gear.id].y;
+        rotations[gear.id] = { angle: 0 };
+        const img = document.getElementById(`gear-${gear.id}`);
+        if (img) {
+            img.style.left      = `${gear.x}px`;
+            img.style.top       = `${gear.y}px`;
+            img.style.transform = 'rotate(0deg)';
+        }
+        const lbl = document.querySelector(`.gear-label[data-id="${gear.id}"]`);
+        if (lbl) { lbl.style.left = `${gear.x}px`; lbl.style.top = `${gear.y - 20}px`; }
+    });
+    drawLines();
 }
 
 function getParentGear(gear) {
@@ -239,8 +268,8 @@ function makeDraggable() {
                 gearEl.style.left = `${x}px`;
                 gearEl.style.top  = `${y}px`;
                 const id    = parseInt(gearEl.id.split('-')[1], 10);
-                const label = document.querySelector(`.gear-label[data-id="${id}"]`);
-                if (label) { label.style.left = `${x}px`; label.style.top = `${y - 20}px`; }
+                const lbl   = document.querySelector(`.gear-label[data-id="${id}"]`);
+                if (lbl) { lbl.style.left = `${x}px`; lbl.style.top = `${y - 20}px`; }
                 drawLines();
             };
             const stop = () => {
@@ -269,4 +298,5 @@ document.addEventListener('DOMContentLoaded', () => {
     makeDraggable();
     document.getElementById('startButton').addEventListener('click', startRotation);
     document.getElementById('stopButton').addEventListener('click', stopRotation);
+    document.getElementById('resetButton').addEventListener('click', resetPositions);
 });
