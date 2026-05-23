@@ -1,5 +1,5 @@
 const gears = [
-    { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1 },
+    { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1, alignWith: 2 },
     { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1 },
     { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2,  visible: false },
     { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3,  visible: false },
@@ -77,7 +77,7 @@ function drawLines() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     gears.forEach(gear => {
-        if (!gear.syncWith) return;
+        if (!gear.syncWith && !gear.alignWith) return;
         if (gear.visible === false) return;
 
         const alignId = gear.alignWith || gear.syncWith;
@@ -298,4 +298,3 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('stopButton').addEventListener('click', stopRotation);
     document.getElementById('resetButton').addEventListener('click', resetPositions);
 });
-
