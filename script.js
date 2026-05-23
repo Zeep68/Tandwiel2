@@ -138,8 +138,9 @@ function renderGears() {
         img.id = `gear-${gear.id}`;
         img.src = gear.src;
         img.classList.add('gear');
-        img.style.width    = `${gear.teeth * 5}px`;
-        img.style.height   = `${gear.teeth * 5}px`;
+        const size = gear.id === 2 ? 250 : gear.teeth * 5;
+        img.style.width    = `${size}px`;
+        img.style.height   = `${size}px`;
         img.style.left     = `${gear.x}px`;
         img.style.top      = `${gear.y}px`;
         img.style.position = 'absolute';
