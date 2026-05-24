@@ -110,14 +110,11 @@ function drawLines() {
         const locked = lockedGears.has(gear.id);
         const aligned = isAligned(gear);
 
-        // Nieuw (eindigt altijd exact op middelpunt partner):
 const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
 const rad  = totalAngle * Math.PI / 180;
-const lineX = cA.x + Math.cos(rad) * dist;
-const lineY = cA.y + Math.sin(rad) * dist;
-// Eindpunt is altijd het exacte middelpunt van de partner
-const endX = cB.x;
-const endY = cB.y;
+const endX = cA.x + Math.cos(rad) * dist;
+const endY = cA.y + Math.sin(rad) * dist;
+
 
 
         const color = locked ? '#00cc44' : aligned ? '#ff0000' : '#1a73e8';
