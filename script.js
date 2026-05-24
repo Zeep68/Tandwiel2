@@ -1,19 +1,19 @@
 const gears = [
     { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1, alignWith: 2 },
-    { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1 },
+    { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1,  alignWith: 1 },
     { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2,  visible: false },
     { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3,  visible: false },
     { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4,  alignWith: 6 },
     { id: 6,  src: 'images/gear16org.png',      teeth: 16, x: 300, y: 300, direction: -1, syncWith: 5,  alignWith: 5 },
     { id: 7,  src: 'images/gear25bovenorg.png', teeth: 25, x: 450, y: 450, direction:  1, syncWith: 6,  alignWith: 8 },
-    { id: 8,  src: 'images/gear189org.png',     teeth: 18, x: 600, y: 600, direction: -1, syncWith: 7 },
+    { id: 8,  src: 'images/gear189org.png',     teeth: 18, x: 600, y: 600, direction: -1, syncWith: 7,  alignWith: 7 },
     { id: 9,  src: 'images/gear199org.png',     teeth: 19, x: 450, y: 300, direction:  1, syncWith: 8,  alignWith: 10 },
-    { id: 10, src: 'images/gear369org.png',     teeth: 36, x: 300, y: 600, direction: -1, syncWith: 9 },
+    { id: 10, src: 'images/gear369org.png',     teeth: 36, x: 300, y: 600, direction: -1, syncWith: 9,  alignWith: 9 },
     { id: 11, src: 'images/gear9a.png',         teeth:  9, x: 850, y: 300, direction:  1, syncWith: 10, visible: false },
     { id: 12, src: 'images/gear13.png',         teeth: 13, x: 150, y: 300, direction:  1, syncWith: 11, visible: false },
     { id: 13, src: 'images/gear2113.png',       teeth: 21, x: 150, y: 300, direction:  1, syncWith: 12, alignWith: 14 },
-    { id: 14, src: 'images/gear34org.png',      teeth: 34, x: 600, y: 150, direction: -1, syncWith: 13 },
-    { id: 15, src: 'images/gear25linksorg.png', teeth: 25, x: 600, y: 450, direction:  1, syncWith: 14 },
+    { id: 14, src: 'images/gear34org.png',      teeth: 34, x: 600, y: 150, direction: -1, syncWith: 13, alignWith: 13 },
+    { id: 15, src: 'images/gear25linksorg.png', teeth: 25, x: 600, y: 450, direction:  1, syncWith: 14, alignWith: 14 },
 ];
 
 const startAngles = {
@@ -30,29 +30,12 @@ const startAngles = {
     15: -44.8,
 };
 
-// Volgorde: trigger = lijn van lineGear naar targetGear,
-// actie = zet lockGear vast op zijn huidige positie
-const lockSequence = [
-    { lockGear: 2,  lineGear: 1,  targetGear: 2  },
-    { lockGear: 5,  lineGear: 5,  targetGear: 6  },
-    { lockGear: 6,  lineGear: 6,  targetGear: 5  },
-    { lockGear: 7,  lineGear: 7,  targetGear: 8  },
-    { lockGear: 8,  lineGear: 8,  targetGear: 7  },
-    { lockGear: 9,  lineGear: 9,  targetGear: 10 },
-    { lockGear: 10, lineGear: 10, targetGear: 9  },
-    { lockGear: 13, lineGear: 13, targetGear: 14 },
-    { lockGear: 14, lineGear: 14, targetGear: 13 },
-    { lockGear: 15, lineGear: 15, targetGear: 14 },
-    { lockGear: 1,  lineGear: 1,  targetGear: 2  },
-];
-
 const defaultPositions = {};
 gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
 let isRotating = false;
 const rotations = {};
 const lockedGears = new Set();
-let currentLockStep = 0;
 const drivingGearId = 1;
 let speedFactor = 1;
 let globalDirection = 1;
@@ -101,26 +84,33 @@ function getTotalAngle(gearId) {
     return (rotations[gearId]?.angle || 0) + (startAngles[gearId] || 0);
 }
 
+function isAligned(gear) {
+    if (!gear.alignWith) return false;
+    const partner = gears.find(g => g.id === gear.alignWith);
+    if (!partner) return false;
+    const cA = gearCenter(gear);
+    const cB = gearCenter(partner);
+    const totalAngle     = getTotalAngle(gear.id);
+    const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
+    return getAngleDiff(totalAngle, angleToPartner) < ALIGN_TOL;
+}
+
 function drawLines() {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     gears.forEach(gear => {
         if (gear.visible === false) return;
-        const alignId = gear.alignWith || gear.syncWith;
-        if (!alignId) return;
-        const partner = gears.find(g => g.id === alignId);
+        if (!gear.alignWith) return;
+        const partner = gears.find(g => g.id === gear.alignWith);
         if (!partner) return;
 
-        const cA = gearCenter(gear);
-        const cB = gearCenter(partner);
+        const cA     = gearCenter(gear);
+        const cB     = gearCenter(partner);
+        const locked = lockedGears.has(gear.id);
+        const aligned = isAligned(gear);
 
-        const totalAngle     = getTotalAngle(gear.id);
-        const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-        const diff           = getAngleDiff(totalAngle, angleToPartner);
-        const locked         = lockedGears.has(gear.id);
-        const aligned        = diff < ALIGN_TOL && !locked;
-
+        const totalAngle = getTotalAngle(gear.id);
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
         const endX = cA.x + Math.cos(rad) * dist;
@@ -141,6 +131,7 @@ function drawLines() {
         ctx.fillStyle = color;
         ctx.fill();
 
+        // Oranje cirkel op middelpunt partner
         ctx.beginPath();
         ctx.arc(cB.x, cB.y, 6, 0, Math.PI * 2);
         ctx.strokeStyle = '#ffaa00';
@@ -152,37 +143,22 @@ function drawLines() {
 }
 
 function checkLocking() {
-    if (currentLockStep >= lockSequence.length) return;
-
-    const step       = lockSequence[currentLockStep];
-    const lineGear   = gears.find(g => g.id === step.lineGear);
-    const targetGear = gears.find(g => g.id === step.targetGear);
-    if (!lineGear || !targetGear) return;
-
-    const cA             = gearCenter(lineGear);
-    const cB             = gearCenter(targetGear);
-    const totalAngle     = getTotalAngle(lineGear.id);
-    const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-    const diff           = getAngleDiff(totalAngle, angleToPartner);
-
-    if (diff < ALIGN_TOL) {
-        // Zet lockGear vast op HUIDIGE positie — geen berekening, gewoon stoppen
-        const lockId = step.lockGear;
-        rotations[lockId].locked = true;
-        lockedGears.add(lockId);
-
-        // Update visueel — laat staan waar hij is
-        const img = document.getElementById(`gear-${lockId}`);
-        if (img) {
-            const currentRot = rotations[lockId].angle || 0;
-            img.style.transform = `rotate(${currentRot % 360}deg)`;
+    gears.forEach(gear => {
+        if (!gear.alignWith) return;
+        if (lockedGears.has(gear.id)) return;
+        if (isAligned(gear)) {
+            // Bevries op huidige positie
+            rotations[gear.id].locked = true;
+            lockedGears.add(gear.id);
+            const img = document.getElementById(`gear-${gear.id}`);
+            if (img) img.style.transform = `rotate(${(rotations[gear.id].angle || 0) % 360}deg)`;
         }
+    });
 
-        currentLockStep++;
-
-        if (currentLockStep >= lockSequence.length) {
-            stopRotation();
-        }
+    // Stop alles als alle zichtbare gears met alignWith bevroren zijn
+    const alignedGears = gears.filter(g => g.alignWith && g.visible !== false);
+    if (alignedGears.every(g => lockedGears.has(g.id))) {
+        stopRotation();
     }
 }
 
@@ -251,7 +227,6 @@ function resetPositions() {
     stopRotation();
     localStorage.removeItem('gearPositions');
     lockedGears.clear();
-    currentLockStep = 0;
     gears.forEach(gear => {
         gear.x = defaultPositions[gear.id].x;
         gear.y = defaultPositions[gear.id].y;
