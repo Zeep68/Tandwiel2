@@ -30,8 +30,7 @@ const startAngles = {
     15: -44.8,
 };
 
-// Volgorde van vastzetten: welk gear stopt als welke lijn uitlijnt
-// [gear om te stoppen, lijn van gear A naar B]
+// Volgorde: welk gear stopt, en welke lijn (van lineGear naar targetGear) triggert dat
 const lockSequence = [
     { lockGear: 2,  lineGear: 1,  targetGear: 2  },
     { lockGear: 5,  lineGear: 5,  targetGear: 6  },
@@ -60,7 +59,7 @@ let lastTime = 0;
 let animationFrame;
 let canvas, ctx;
 
-const ALIGN_TOL = 0.8; // strikt — exacte uitlijning
+const ALIGN_TOL = 2.0;
 
 function initCanvas() {
     const container = document.getElementById('gear-container');
@@ -97,6 +96,12 @@ function getAngleDiff(totalAngle, angleToPartner) {
     return diff;
 }
 
+function getTotalAngle(gearId) {
+    const currentAngle = rotations[gearId]?.angle || 0;
+    const startAngle   = startAngles[gearId] || 0;
+    return currentAngle + startAngle;
+}
+
 function drawLines() {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -111,14 +116,11 @@ function drawLines() {
         const cA = gearCenter(gear);
         const cB = gearCenter(partner);
 
-        const currentAngle = rotations[gear.id]?.angle || 0;
-        const startAngle   = startAngles[gear.id] || 0;
-        const totalAngle   = currentAngle + startAngle;
-
+        const totalAngle     = getTotalAngle(gear.id);
         const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-        const diff = getAngleDiff(totalAngle, angleToPartner);
-        const aligned = diff < ALIGN_TOL;
-        const locked  = lockedGears.has(gear.id);
+        const diff           = getAngleDiff(totalAngle, angleToPartner);
+        const aligned        = diff < ALIGN_TOL;
+        const locked         = lockedGears.has(gear.id);
 
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
@@ -153,39 +155,33 @@ function drawLines() {
 function checkLocking() {
     if (currentLockStep >= lockSequence.length) return;
 
-    const step = lockSequence[currentLockStep];
+    const step       = lockSequence[currentLockStep];
     const lineGear   = gears.find(g => g.id === step.lineGear);
     const targetGear = gears.find(g => g.id === step.targetGear);
     if (!lineGear || !targetGear) return;
 
-    const cA = gearCenter(lineGear);
-    const cB = gearCenter(targetGear);
-
-    const currentAngle = rotations[lineGear.id]?.angle || 0;
-    const startAngle   = startAngles[lineGear.id] || 0;
-    const totalAngle   = currentAngle + startAngle;
-
+    const cA             = gearCenter(lineGear);
+    const cB             = gearCenter(targetGear);
+    const totalAngle     = getTotalAngle(lineGear.id);
     const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-    const diff = getAngleDiff(totalAngle, angleToPartner);
+    const diff           = getAngleDiff(totalAngle, angleToPartner);
 
     if (diff < ALIGN_TOL) {
-        // Zet gear vast op exact het juiste punt
-        const exactAngle = angleToPartner - startAngles[step.lockGear] || 0;
-        if (rotations[step.lockGear]) {
-            rotations[step.lockGear].angle = angleToPartner - (startAngles[step.lockGear] || 0);
-            rotations[step.lockGear].locked = true;
-        }
-        lockedGears.add(step.lockGear);
+        // Zet lockGear vast op exacte uitlijnhoek
+        const lockId       = step.lockGear;
+        const exactAngle   = angleToPartner - (startAngles[lockId] || 0);
+        rotations[lockId].angle  = exactAngle;
+        rotations[lockId].locked = true;
 
-        // Update visueel
-        const img = document.getElementById(`gear-${step.lockGear}`);
-        if (img) img.style.transform = `rotate(${rotations[step.lockGear].angle % 360}deg)`;
+        // Update visueel exact
+        const img = document.getElementById(`gear-${lockId}`);
+        if (img) img.style.transform = `rotate(${exactAngle % 360}deg)`;
 
+        lockedGears.add(lockId);
         currentLockStep++;
 
         if (currentLockStep >= lockSequence.length) {
             stopRotation();
-            alert('Alle tandwielen zijn uitgelijnde! 🎉');
         }
     }
 }
