@@ -1,6 +1,6 @@
 const gears = [
     { id: 1,  src: 'images/gear25.png',        teeth: 25, x: 450, y: 150, direction:  1, alignWith: 2 },
-    { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1 },
+    { id: 2,  src: 'images/gear57org.png',      teeth: 57, x: 750, y: 300, direction: -1, syncWith: 1,  alignWith: 1 },
     { id: 3,  src: 'images/gear9.png',          teeth:  9, x: 850, y: 300, direction:  1, syncWith: 2,  visible: false },
     { id: 4,  src: 'images/gear12.png',         teeth: 12, x: 650, y: 450, direction: -1, syncWith: 3,  visible: false },
     { id: 5,  src: 'images/gear24-12org.png',   teeth: 24, x: 600, y: 300, direction:  1, syncWith: 4,  alignWith: 6 },
@@ -16,7 +16,6 @@ const gears = [
     { id: 15, src: 'images/gear25linksorg.png', teeth: 25, x: 600, y: 450, direction:  1, syncWith: 14, alignWith: 14 },
 ];
 
-// Starthoeken: de hoek van het bolletje in de afbeelding (0°=rechts, met klok mee)
 const startAngles = {
     1:  -18.7,
     2: -124.8,
@@ -44,7 +43,7 @@ let lastTime = 0;
 let animationFrame;
 let canvas, ctx;
 
-const ALIGN_TOL = 1.0; // strikt: exact in het midden
+const ALIGN_TOL = 3.0;
 
 function initCanvas() {
     const container = document.getElementById('gear-container');
@@ -85,22 +84,12 @@ function getTotalAngle(gearId) {
     return (rotations[gearId]?.angle || 0) + (startAngles[gearId] || 0);
 }
 
-// Bereken starthoek voor gear 2 zodat bolletje naar gear 1 wijst bij rotatie=0
-    const gear1 = gears.find(g => g.id === 1);
-    const gear2 = gears.find(g => g.id === 2);
-    const c1    = gearCenter(gear1);
-    const c2    = gearCenter(gear2);
-    // Hoek van gear2 naar gear1
-    const angle = Math.atan2(c1.y - c2.y, c1.x - c2.x) * (180 / Math.PI);
-    startAngles[2] = angle;
-}
-
 function isAligned(gear) {
     if (!gear.alignWith) return false;
     const partner = gears.find(g => g.id === gear.alignWith);
     if (!partner) return false;
-    const cA             = gearCenter(gear);
-    const cB             = gearCenter(partner);
+    const cA = gearCenter(gear);
+    const cB = gearCenter(partner);
     const totalAngle     = getTotalAngle(gear.id);
     const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
     return getAngleDiff(totalAngle, angleToPartner) < ALIGN_TOL;
@@ -119,7 +108,7 @@ function drawLines() {
         const cA     = gearCenter(gear);
         const cB     = gearCenter(partner);
         const locked = lockedGears.has(gear.id);
-        const aligned = !locked && isAligned(gear);
+        const aligned = isAligned(gear);
 
         const totalAngle = getTotalAngle(gear.id);
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
@@ -142,6 +131,7 @@ function drawLines() {
         ctx.fillStyle = color;
         ctx.fill();
 
+        // Oranje cirkel op middelpunt partner
         ctx.beginPath();
         ctx.arc(cB.x, cB.y, 6, 0, Math.PI * 2);
         ctx.strokeStyle = '#ffaa00';
@@ -157,6 +147,7 @@ function checkLocking() {
         if (!gear.alignWith) return;
         if (lockedGears.has(gear.id)) return;
         if (isAligned(gear)) {
+            // Bevries op huidige positie
             rotations[gear.id].locked = true;
             lockedGears.add(gear.id);
             const img = document.getElementById(`gear-${gear.id}`);
@@ -164,8 +155,9 @@ function checkLocking() {
         }
     });
 
+    // Stop alles als alle zichtbare gears met alignWith bevroren zijn
     const alignedGears = gears.filter(g => g.alignWith && g.visible !== false);
-    if (alignedGears.length > 0 && alignedGears.every(g => lockedGears.has(g.id))) {
+    if (alignedGears.every(g => lockedGears.has(g.id))) {
         stopRotation();
     }
 }
