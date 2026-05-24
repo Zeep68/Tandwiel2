@@ -113,8 +113,17 @@ function drawLines() {
         const totalAngle = getTotalAngle(gear.id);
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
-        const endX = cA.x + Math.cos(rad) * dist;
-        const endY = cA.y + Math.sin(rad) * dist;
+
+        // Als rood of groen: eindigt EXACT op het middelpunt van de partner
+        // Als blauw: draait vrij mee met het tandwiel
+        let endX, endY;
+        if (locked || aligned) {
+            endX = cB.x;
+            endY = cB.y;
+        } else {
+            endX = cA.x + Math.cos(rad) * dist;
+            endY = cA.y + Math.sin(rad) * dist;
+        }
 
         const color = locked ? '#00cc44' : aligned ? '#ff0000' : '#1a73e8';
         ctx.strokeStyle = color;
@@ -147,7 +156,6 @@ function checkLocking() {
         if (!gear.alignWith) return;
         if (lockedGears.has(gear.id)) return;
         if (isAligned(gear)) {
-            // Bevries op huidige positie
             rotations[gear.id].locked = true;
             lockedGears.add(gear.id);
             const img = document.getElementById(`gear-${gear.id}`);
@@ -155,7 +163,6 @@ function checkLocking() {
         }
     });
 
-    // Stop alles als alle zichtbare gears met alignWith bevroren zijn
     const alignedGears = gears.filter(g => g.alignWith && g.visible !== false);
     if (alignedGears.every(g => lockedGears.has(g.id))) {
         stopRotation();
