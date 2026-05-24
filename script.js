@@ -30,7 +30,8 @@ const startAngles = {
     15: -44.8,
 };
 
-// Volgorde: welk gear stopt, en welke lijn (van lineGear naar targetGear) triggert dat
+// Volgorde: trigger = lijn van lineGear naar targetGear,
+// actie = zet lockGear vast op zijn huidige positie
 const lockSequence = [
     { lockGear: 2,  lineGear: 1,  targetGear: 2  },
     { lockGear: 5,  lineGear: 5,  targetGear: 6  },
@@ -59,7 +60,7 @@ let lastTime = 0;
 let animationFrame;
 let canvas, ctx;
 
-const ALIGN_TOL = 2.0;
+const ALIGN_TOL = 3.0;
 
 function initCanvas() {
     const container = document.getElementById('gear-container');
@@ -90,16 +91,14 @@ function gearCenter(gear) {
     return { x, y, radius };
 }
 
-function getAngleDiff(totalAngle, angleToPartner) {
-    let diff = ((totalAngle - angleToPartner) % 360 + 360) % 360;
+function getAngleDiff(a, b) {
+    let diff = ((a - b) % 360 + 360) % 360;
     if (diff > 180) diff = 360 - diff;
     return diff;
 }
 
 function getTotalAngle(gearId) {
-    const currentAngle = rotations[gearId]?.angle || 0;
-    const startAngle   = startAngles[gearId] || 0;
-    return currentAngle + startAngle;
+    return (rotations[gearId]?.angle || 0) + (startAngles[gearId] || 0);
 }
 
 function drawLines() {
@@ -119,8 +118,8 @@ function drawLines() {
         const totalAngle     = getTotalAngle(gear.id);
         const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
         const diff           = getAngleDiff(totalAngle, angleToPartner);
-        const aligned        = diff < ALIGN_TOL;
         const locked         = lockedGears.has(gear.id);
+        const aligned        = diff < ALIGN_TOL && !locked;
 
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
@@ -167,17 +166,18 @@ function checkLocking() {
     const diff           = getAngleDiff(totalAngle, angleToPartner);
 
     if (diff < ALIGN_TOL) {
-        // Zet lockGear vast op exacte uitlijnhoek
-        const lockId       = step.lockGear;
-        const exactAngle   = angleToPartner - (startAngles[lockId] || 0);
-        rotations[lockId].angle  = exactAngle;
+        // Zet lockGear vast op HUIDIGE positie — geen berekening, gewoon stoppen
+        const lockId = step.lockGear;
         rotations[lockId].locked = true;
-
-        // Update visueel exact
-        const img = document.getElementById(`gear-${lockId}`);
-        if (img) img.style.transform = `rotate(${exactAngle % 360}deg)`;
-
         lockedGears.add(lockId);
+
+        // Update visueel — laat staan waar hij is
+        const img = document.getElementById(`gear-${lockId}`);
+        if (img) {
+            const currentRot = rotations[lockId].angle || 0;
+            img.style.transform = `rotate(${currentRot % 360}deg)`;
+        }
+
         currentLockStep++;
 
         if (currentLockStep >= lockSequence.length) {
