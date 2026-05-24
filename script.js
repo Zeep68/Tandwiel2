@@ -30,17 +30,37 @@ const startAngles = {
     15: -44.8,
 };
 
+// Volgorde van vastzetten: welk gear stopt als welke lijn uitlijnt
+// [gear om te stoppen, lijn van gear A naar B]
+const lockSequence = [
+    { lockGear: 2,  lineGear: 1,  targetGear: 2  },
+    { lockGear: 5,  lineGear: 5,  targetGear: 6  },
+    { lockGear: 6,  lineGear: 6,  targetGear: 5  },
+    { lockGear: 7,  lineGear: 7,  targetGear: 8  },
+    { lockGear: 8,  lineGear: 8,  targetGear: 7  },
+    { lockGear: 9,  lineGear: 9,  targetGear: 10 },
+    { lockGear: 10, lineGear: 10, targetGear: 9  },
+    { lockGear: 13, lineGear: 13, targetGear: 14 },
+    { lockGear: 14, lineGear: 14, targetGear: 13 },
+    { lockGear: 15, lineGear: 15, targetGear: 14 },
+    { lockGear: 1,  lineGear: 1,  targetGear: 2  },
+];
+
 const defaultPositions = {};
 gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
 let isRotating = false;
 const rotations = {};
+const lockedGears = new Set();
+let currentLockStep = 0;
 const drivingGearId = 1;
 let speedFactor = 1;
 let globalDirection = 1;
 let lastTime = 0;
 let animationFrame;
 let canvas, ctx;
+
+const ALIGN_TOL = 0.8; // strikt — exacte uitlijning
 
 function initCanvas() {
     const container = document.getElementById('gear-container');
@@ -71,17 +91,20 @@ function gearCenter(gear) {
     return { x, y, radius };
 }
 
-const ALIGN_TOL = 8;
+function getAngleDiff(totalAngle, angleToPartner) {
+    let diff = ((totalAngle - angleToPartner) % 360 + 360) % 360;
+    if (diff > 180) diff = 360 - diff;
+    return diff;
+}
 
 function drawLines() {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     gears.forEach(gear => {
-        if (!gear.syncWith && !gear.alignWith) return;
         if (gear.visible === false) return;
-
         const alignId = gear.alignWith || gear.syncWith;
+        if (!alignId) return;
         const partner = gears.find(g => g.id === alignId);
         if (!partner) return;
 
@@ -93,19 +116,18 @@ function drawLines() {
         const totalAngle   = currentAngle + startAngle;
 
         const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-
-        let diff = ((totalAngle - angleToPartner) % 360 + 360) % 360;
-        if (diff > 180) diff = 360 - diff;
+        const diff = getAngleDiff(totalAngle, angleToPartner);
         const aligned = diff < ALIGN_TOL;
+        const locked  = lockedGears.has(gear.id);
 
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
         const endX = cA.x + Math.cos(rad) * dist;
         const endY = cA.y + Math.sin(rad) * dist;
 
-        const color = aligned ? '#ff0000' : '#1a73e8';
+        const color = locked ? '#00cc44' : aligned ? '#ff0000' : '#1a73e8';
         ctx.strokeStyle = color;
-        ctx.lineWidth   = aligned ? 4 : 2;
+        ctx.lineWidth   = locked ? 3 : aligned ? 4 : 2;
         ctx.globalAlpha = 0.9;
 
         ctx.beginPath();
@@ -128,6 +150,46 @@ function drawLines() {
     ctx.globalAlpha = 1;
 }
 
+function checkLocking() {
+    if (currentLockStep >= lockSequence.length) return;
+
+    const step = lockSequence[currentLockStep];
+    const lineGear   = gears.find(g => g.id === step.lineGear);
+    const targetGear = gears.find(g => g.id === step.targetGear);
+    if (!lineGear || !targetGear) return;
+
+    const cA = gearCenter(lineGear);
+    const cB = gearCenter(targetGear);
+
+    const currentAngle = rotations[lineGear.id]?.angle || 0;
+    const startAngle   = startAngles[lineGear.id] || 0;
+    const totalAngle   = currentAngle + startAngle;
+
+    const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
+    const diff = getAngleDiff(totalAngle, angleToPartner);
+
+    if (diff < ALIGN_TOL) {
+        // Zet gear vast op exact het juiste punt
+        const exactAngle = angleToPartner - startAngles[step.lockGear] || 0;
+        if (rotations[step.lockGear]) {
+            rotations[step.lockGear].angle = angleToPartner - (startAngles[step.lockGear] || 0);
+            rotations[step.lockGear].locked = true;
+        }
+        lockedGears.add(step.lockGear);
+
+        // Update visueel
+        const img = document.getElementById(`gear-${step.lockGear}`);
+        if (img) img.style.transform = `rotate(${rotations[step.lockGear].angle % 360}deg)`;
+
+        currentLockStep++;
+
+        if (currentLockStep >= lockSequence.length) {
+            stopRotation();
+            alert('Alle tandwielen zijn uitgelijnde! 🎉');
+        }
+    }
+}
+
 function renderGears() {
     const container = document.getElementById('gear-container');
     Array.from(container.children).forEach(c => {
@@ -139,9 +201,9 @@ function renderGears() {
         img.id = `gear-${gear.id}`;
         img.src = gear.src;
         img.classList.add('gear');
-        const size = gear.id === 2 ? 272 : gear.teeth * 5;
-        img.style.width    = `${size}px`;
-        img.style.height   = `${size}px`;
+        const actualSize = gear.id === 2 ? 272 : gear.teeth * 5;
+        img.style.width    = `${actualSize}px`;
+        img.style.height   = `${actualSize}px`;
         img.style.left     = `${gear.x}px`;
         img.style.top      = `${gear.y}px`;
         img.style.position = 'absolute';
@@ -162,7 +224,7 @@ function renderGears() {
 
         container.appendChild(img);
         container.appendChild(label);
-        rotations[gear.id] = { angle: 0 };
+        rotations[gear.id] = { angle: 0, locked: false };
     });
 
     if (canvas) container.appendChild(canvas);
@@ -192,10 +254,12 @@ function loadPositions() {
 function resetPositions() {
     stopRotation();
     localStorage.removeItem('gearPositions');
+    lockedGears.clear();
+    currentLockStep = 0;
     gears.forEach(gear => {
         gear.x = defaultPositions[gear.id].x;
         gear.y = defaultPositions[gear.id].y;
-        rotations[gear.id] = { angle: 0 };
+        rotations[gear.id] = { angle: 0, locked: false };
         const img = document.getElementById(`gear-${gear.id}`);
         if (img) {
             img.style.left      = `${gear.x}px`;
@@ -243,15 +307,19 @@ function stopRotation() {
 function animate(time) {
     const delta = (time - lastTime) / 1000;
     lastTime = time;
+
     gears.forEach(gear => {
         const rot = rotations[gear.id];
-        if (rot) {
+        if (rot && !rot.locked) {
             rot.angle = (rot.angle || 0) + (rot.omega * delta * rot.direction * speedFactor) * (180 / Math.PI);
             const img = document.getElementById(`gear-${gear.id}`);
             if (img) img.style.transform = `rotate(${rot.angle % 360}deg)`;
         }
     });
+
+    checkLocking();
     drawLines();
+
     if (isRotating) animationFrame = requestAnimationFrame(animate);
 }
 
