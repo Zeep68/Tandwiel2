@@ -110,12 +110,11 @@ function drawLines() {
         const locked = lockedGears.has(gear.id);
         const aligned = isAligned(gear);
 
-const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
-const rad  = totalAngle * Math.PI / 180;
-const endX = cA.x + Math.cos(rad) * dist;
-const endY = cA.y + Math.sin(rad) * dist;
-
-
+        const totalAngle = getTotalAngle(gear.id);
+        const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
+        const rad  = totalAngle * Math.PI / 180;
+        const endX = cA.x + Math.cos(rad) * dist;
+        const endY = cA.y + Math.sin(rad) * dist;
 
         const color = locked ? '#00cc44' : aligned ? '#ff0000' : '#1a73e8';
         ctx.strokeStyle = color;
