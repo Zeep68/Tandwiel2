@@ -17,10 +17,9 @@ const gears = [
 ];
 
 // Starthoeken: de hoek van het bolletje in de afbeelding (0°=rechts, met klok mee)
-// Gear 2: starthoek wordt berekend vanuit positie richting gear 1 (zie initStartAngle2)
 const startAngles = {
     1:  -18.7,
-    2:    0.0,  // wordt dynamisch berekend in initStartAngle2()
+    2: -124.8,
     5: -106.9,
     6:  141.0,
     7:  -68.6,
@@ -87,7 +86,6 @@ function getTotalAngle(gearId) {
 }
 
 // Bereken starthoek voor gear 2 zodat bolletje naar gear 1 wijst bij rotatie=0
-function initStartAngle2() {
     const gear1 = gears.find(g => g.id === 1);
     const gear2 = gears.find(g => g.id === 2);
     const c1    = gearCenter(gear1);
@@ -211,7 +209,6 @@ function renderGears() {
 
     if (canvas) container.appendChild(canvas);
     resizeCanvas();
-    initStartAngle2(); // bereken gear 2 starthoek na posities laden
     drawLines();
 }
 
@@ -251,7 +248,6 @@ function resetPositions() {
         const lbl = document.querySelector(`.gear-label[data-id="${gear.id}"]`);
         if (lbl) { lbl.style.left = `${gear.x}px`; lbl.style.top = `${gear.y - 20}px`; }
     });
-    initStartAngle2();
     drawLines();
 }
 
