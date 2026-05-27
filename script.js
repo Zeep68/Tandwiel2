@@ -30,6 +30,21 @@ const startAngles = {
     15: -44.8,
 };
 
+
+// Handmatige size overrides per tandwiel (in pixels). 
+// Verander deze waarden om individuele tandwielen groter/kleiner te maken.
+// Als een ID hier niet staat, wordt teeth * 5 gebruikt.
+const gearSizes = {
+    2: 272,
+    // Voorbeelden:
+    // 5: 125,
+    // 7: 130,
+};
+
+function getGearSize(gear) {
+    return gearSizes[gear.id] || gear.teeth * 5;
+}
+
 const defaultPositions = {};
 gears.forEach(g => { defaultPositions[g.id] = { x: g.x, y: g.y }; });
 
@@ -65,7 +80,7 @@ function resizeCanvas() {
 
 function gearCenter(gear) {
     const img = document.getElementById(`gear-${gear.id}`);
-    const actualSize = gear.id === 2 ? 272 : gear.teeth * 5;
+    const actualSize = getGearSize(gear);
     const radius = actualSize / 2;
     const x = parseInt(img ? img.style.left : gear.x) + radius;
     const y = parseInt(img ? img.style.top  : gear.y) + radius;
@@ -162,6 +177,26 @@ function drawLines() {
 }
 
 
+
+function saveAsDefault() {
+    gears.forEach(gear => {
+        const img = document.getElementById(`gear-${gear.id}`);
+        if (img) {
+            const newX = parseInt(img.style.left, 10);
+            const newY = parseInt(img.style.top,  10);
+            gear.x = newX;
+            gear.y = newY;
+            defaultPositions[gear.id] = { x: newX, y: newY };
+        }
+    });
+    savePositions();
+    showAnglesPanel('Huidige posities opgeslagen als standaard!');
+    setTimeout(() => {
+        const panel = document.getElementById('angles-panel');
+        if (panel) panel.remove();
+    }, 2000);
+}
+
 function showAnglesPanel(text) {
     let panel = document.getElementById('angles-panel');
     if (!panel) {
@@ -222,7 +257,7 @@ function renderGears() {
         img.id = `gear-${gear.id}`;
         img.src = gear.src;
         img.classList.add('gear');
-        const actualSize = gear.id === 2 ? 272 : gear.teeth * 5;
+        const actualSize = getGearSize(gear);
         img.style.width    = `${actualSize}px`;
         img.style.height   = `${actualSize}px`;
         img.style.left     = `${gear.x}px`;
@@ -390,4 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Stop = bevries alles + toon hoeken
     document.getElementById('stopButton').addEventListener('click', freezeAll);
     document.getElementById('resetButton').addEventListener('click', resetPositions);
+    const saveBtn = document.getElementById('saveDefaultButton');
+    if (saveBtn) saveBtn.addEventListener('click', saveAsDefault);
 });
