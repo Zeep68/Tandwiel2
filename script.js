@@ -43,8 +43,6 @@ let lastTime = 0;
 let animationFrame;
 let canvas, ctx;
 
-const ALIGN_TOL = 3.0;
-
 function initCanvas() {
     const container = document.getElementById('gear-container');
     canvas = document.createElement('canvas');
@@ -74,25 +72,13 @@ function gearCenter(gear) {
     return { x, y, radius };
 }
 
-function getAngleDiff(a, b) {
-    let diff = ((a - b) % 360 + 360) % 360;
-    if (diff > 180) diff = 360 - diff;
-    return diff;
-}
-
 function getTotalAngle(gearId) {
     return (rotations[gearId]?.angle || 0) + (startAngles[gearId] || 0);
 }
 
-function isAligned(gear) {
-    if (!gear.alignWith) return false;
-    const partner = gears.find(g => g.id === gear.alignWith);
-    if (!partner) return false;
-    const cA = gearCenter(gear);
-    const cB = gearCenter(partner);
-    const totalAngle     = getTotalAngle(gear.id);
-    const angleToPartner = Math.atan2(cB.y - cA.y, cB.x - cA.x) * (180 / Math.PI);
-    return getAngleDiff(totalAngle, angleToPartner) < ALIGN_TOL;
+// Normaliseer hoek naar [0, 360)
+function normalizeAngle(deg) {
+    return ((deg % 360) + 360) % 360;
 }
 
 function drawLines() {
@@ -108,26 +94,16 @@ function drawLines() {
         const cA     = gearCenter(gear);
         const cB     = gearCenter(partner);
         const locked = lockedGears.has(gear.id);
-        const aligned = isAligned(gear);
 
         const totalAngle = getTotalAngle(gear.id);
         const dist = Math.sqrt((cB.x - cA.x) ** 2 + (cB.y - cA.y) ** 2);
         const rad  = totalAngle * Math.PI / 180;
+        const endX = cA.x + Math.cos(rad) * dist;
+        const endY = cA.y + Math.sin(rad) * dist;
 
-        // Als rood of groen: eindigt EXACT op het middelpunt van de partner
-        // Als blauw: draait vrij mee met het tandwiel
-        let endX, endY;
-        if (locked || aligned) {
-            endX = cB.x;
-            endY = cB.y;
-        } else {
-            endX = cA.x + Math.cos(rad) * dist;
-            endY = cA.y + Math.sin(rad) * dist;
-        }
-
-        const color = locked ? '#00cc44' : aligned ? '#ff0000' : '#1a73e8';
+        const color = locked ? '#00cc44' : '#1a73e8';
         ctx.strokeStyle = color;
-        ctx.lineWidth   = locked ? 3 : aligned ? 4 : 2;
+        ctx.lineWidth   = locked ? 4 : 2;
         ctx.globalAlpha = 0.9;
 
         ctx.beginPath();
@@ -135,38 +111,104 @@ function drawLines() {
         ctx.lineTo(endX, endY);
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+        // Pijl aan eindpunt van lijn
+        const arrowSize = locked ? 14 : 10;
+        const arrowAngle = Math.PI / 6;
         ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(
+            endX - arrowSize * Math.cos(rad - arrowAngle),
+            endY - arrowSize * Math.sin(rad - arrowAngle)
+        );
+        ctx.lineTo(
+            endX - arrowSize * Math.cos(rad + arrowAngle),
+            endY - arrowSize * Math.sin(rad + arrowAngle)
+        );
+        ctx.closePath();
         ctx.fill();
 
-        // Oranje cirkel op middelpunt partner
+        // Oranje cirkel op partner middelpunt
         ctx.beginPath();
         ctx.arc(cB.x, cB.y, 6, 0, Math.PI * 2);
         ctx.strokeStyle = '#ffaa00';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // Toon hoek-label NAAST de pijl bij bevroren tandwielen
+        if (locked) {
+            const angle = normalizeAngle(totalAngle);
+            // Plaats label iets voorbij de pijl in dezelfde richting
+            const labelDist = 22;
+            const labelX = endX + Math.cos(rad) * labelDist;
+            const labelY = endY + Math.sin(rad) * labelDist;
+            ctx.fillStyle = '#00aa33';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Witte achtergrond voor leesbaarheid
+            const text = `${angle.toFixed(1)}°`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillRect(labelX - textWidth/2 - 4, labelY - 10, textWidth + 8, 20);
+            ctx.fillStyle = '#00aa33';
+            ctx.fillText(text, labelX, labelY);
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'alphabetic';
+        }
     });
 
     ctx.globalAlpha = 1;
 }
 
-function checkLocking() {
-    gears.forEach(gear => {
-        if (!gear.alignWith) return;
-        if (lockedGears.has(gear.id)) return;
-        if (isAligned(gear)) {
-            rotations[gear.id].locked = true;
-            lockedGears.add(gear.id);
-            const img = document.getElementById(`gear-${gear.id}`);
-            if (img) img.style.transform = `rotate(${(rotations[gear.id].angle || 0) % 360}deg)`;
-        }
-    });
 
-    const alignedGears = gears.filter(g => g.alignWith && g.visible !== false);
-    if (alignedGears.every(g => lockedGears.has(g.id))) {
-        stopRotation();
+function showAnglesPanel(text) {
+    let panel = document.getElementById('angles-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'angles-panel';
+        panel.style.position = 'fixed';
+        panel.style.bottom = '20px';
+        panel.style.right = '20px';
+        panel.style.background = 'rgba(255, 255, 255, 0.95)';
+        panel.style.border = '2px solid #00aa33';
+        panel.style.borderRadius = '8px';
+        panel.style.padding = '12px 16px';
+        panel.style.fontFamily = 'monospace';
+        panel.style.fontSize = '14px';
+        panel.style.color = '#00aa33';
+        panel.style.zIndex = '9999';
+        panel.style.maxWidth = '300px';
+        panel.style.whiteSpace = 'pre-line';
+        panel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = ' ✕';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.float = 'right';
+        closeBtn.style.color = '#999';
+        closeBtn.style.marginLeft = '10px';
+        closeBtn.onclick = () => panel.remove();
+        panel.appendChild(closeBtn);
+        document.body.appendChild(panel);
     }
+    panel.innerHTML = text.replace(/\n/g, '<br>') + '<br><span style="cursor:pointer;color:#999;float:right" onclick="document.getElementById(\'angles-panel\').remove()">✕ sluit</span>';
+}
+
+// Bevries alle tandwielen op huidige positie + toon hoeken
+function freezeAll() {
+    stopRotation();
+    let output = 'Gradenstanden van groene lijnen:\n\n';
+    gears.forEach(gear => {
+        if (gear.visible === false) return;
+        if (!gear.alignWith) return;
+        rotations[gear.id].locked = true;
+        lockedGears.add(gear.id);
+        const angle = normalizeAngle(getTotalAngle(gear.id));
+        output += `Tandwiel ${gear.id}: ${angle.toFixed(1)}°\n`;
+    });
+    drawLines();
+    // console.log(output);
+    showAnglesPanel(output);
 }
 
 function renderGears() {
@@ -271,6 +313,9 @@ function calculateRotations() {
 }
 
 function startRotation() {
+    // Reset locked status
+    lockedGears.clear();
+    gears.forEach(g => { if (rotations[g.id]) rotations[g.id].locked = false; });
     isRotating = true;
     calculateRotations();
     lastTime = performance.now();
@@ -295,7 +340,6 @@ function animate(time) {
         }
     });
 
-    checkLocking();
     drawLines();
 
     if (isRotating) animationFrame = requestAnimationFrame(animate);
@@ -343,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGears();
     makeDraggable();
     document.getElementById('startButton').addEventListener('click', startRotation);
-    document.getElementById('stopButton').addEventListener('click', stopRotation);
+    // Stop = bevries alles + toon hoeken
+    document.getElementById('stopButton').addEventListener('click', freezeAll);
     document.getElementById('resetButton').addEventListener('click', resetPositions);
 });
