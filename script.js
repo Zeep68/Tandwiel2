@@ -31,15 +31,25 @@ const startAngles = {
 };
 
 
-// Handmatige size overrides per tandwiel (in pixels). 
-// Verander deze waarden om individuele tandwielen groter/kleiner te maken.
-// Als een ID hier niet staat, wordt teeth * 5 gebruikt.
+// Handmatige size overrides per tandwiel (in pixels).
+// Standaard = teeth * 5. Wijzig getallen om individuele tandwielen groter/kleiner te maken.
+// Verwijder de // om een aanpassing te activeren.
 const gearSizes = {
-    2: 272,
-    5: 130,
-    // Voorbeelden:
-    // 5: 125,
-    // 7: 130,
+    1: 125,    // standaard 125 (25 tanden)
+    2: 272,    // standaard 285 (57 tanden) - AANGEPAST
+    3: 45,     // standaard 45  (9 tanden)
+    4: 60,     // standaard 60  (12 tanden)
+    5: 120,    // standaard 120 (24 tanden)
+    6: 80,     // standaard 80  (16 tanden)
+    7: 125,    // standaard 125 (25 tanden)
+    8: 90,     // standaard 90  (18 tanden)
+    9: 95,     // standaard 95  (19 tanden)
+    10: 180,   // standaard 180 (36 tanden)
+    11: 45,    // standaard 45  (9 tanden)
+    12: 65,    // standaard 65  (13 tanden)
+    13: 105,   // standaard 105 (21 tanden)
+    14: 170,   // standaard 170 (34 tanden)
+    15: 125,   // standaard 125 (25 tanden)
 };
 
 function getGearSize(gear) {
