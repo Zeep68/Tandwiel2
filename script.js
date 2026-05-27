@@ -36,6 +36,7 @@ const startAngles = {
 // Als een ID hier niet staat, wordt teeth * 5 gebruikt.
 const gearSizes = {
     2: 272,
+    5: 130,
     // Voorbeelden:
     // 5: 125,
     // 7: 130,
